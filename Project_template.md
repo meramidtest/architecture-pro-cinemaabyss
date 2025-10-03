@@ -2,49 +2,22 @@
 
 ## Задание 1
 
-1. Спроектируйте to be архитектуру КиноБездны, разделив всю систему на отдельные домены и организовав интеграционное взаимодействие и единую точку вызова сервисов.
-Результат представьте в виде контейнерной диаграммы в нотации С4.
-Добавьте ссылку на файл в этот шаблон
-[ссылка на файл](ссылка)
-
+> [TO-BE архитектура](schemas/to_be_containers.png)
 
 ## Задание 2
 
 ### 1. Proxy
 Команда КиноБездны уже выделила сервис метаданных о фильмах movies и вам необходимо реализовать бесшовный переход с применением паттерна Strangler Fig в части реализации прокси-сервиса (API Gateway), с помощью которого можно будет постепенно переключать траффик, используя фиче-флаг.
 
-
 Реализуйте сервис на любом языке программирования в ./src/microservices/proxy.
-Конфигурация для запуска сервиса через docker-compose уже добавлена
-```yaml
-  proxy-service:
-    build:
-      context: ./src/microservices/proxy
-      dockerfile: Dockerfile
-    container_name: cinemaabyss-proxy-service
-    depends_on:
-      - monolith
-      - movies-service
-      - events-service
-    ports:
-      - "8000:8000"
-    environment:
-      PORT: 8000
-      MONOLITH_URL: http://monolith:8080
-      #монолит
-      MOVIES_SERVICE_URL: http://movies-service:8081 #сервис movies
-      EVENTS_SERVICE_URL: http://events-service:8082 
-      GRADUAL_MIGRATION: "true" # вкл/выкл простого фиче-флага
-      MOVIES_MIGRATION_PERCENT: "50" # процент миграции
-    networks:
-      - cinemaabyss-network
-```
 
 - После реализации запустите postman тесты - они все должны быть зеленые.
+> [Результат выполнения тестов](screenshots/tests-screenshot.png)
 - Отправьте запросы к API Gateway:
    ```bash
    curl http://localhost:8000/api/movies
    ```
+  > [Результат выполнения запроса ](screenshots/1-curl-screenshot.png)
 - Протестируйте постепенный переход, изменив переменную окружения MOVIES_MIGRATION_PERCENT в файле docker-compose.yml.
 
 ### 2. Kafka
@@ -56,9 +29,14 @@
     - Реализуйте простой API, при вызове которого будут создаваться события User/Payment/Movie и обрабатываться внутри сервиса с записью в лог
     - Добавьте в docker-compose новый сервис, kafka там уже есть
 
-Необходимые тесты для проверки этого API вызываются при запуске npm run test:local из папки tests/postman 
-Приложите скриншот тестов и скриншот состояния топиков Kafka http://localhost:8090 
+Необходимые тесты для проверки этого API вызываются при запуске npm run test:local из папки tests/postman
+> [Результат выполнения тестов](screenshots/tests-screenshot.png)
+> 
+> [Логи сервиса events](screenshots/events-screenshot.png)
 
+Приложите скриншот тестов и скриншот состояния топиков Kafka http://localhost:8090
+
+> [Логи сервиса events](screenshots/ui-topics.png)
 
 ## Задание 3
 
@@ -70,46 +48,7 @@
 
 ### CI/CD
 
- В папке .github/worflows доработайте деплой новых сервисов proxy и events в docker-build-push.yml , чтобы api-tests при сборке отрабатывали корректно при отправке коммита в вашу новую ветку.
-
-Нужно доработать 
-```yaml
-on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'src/**'
-      - '.github/workflows/docker-build-push.yml'
-  release:
-    types: [published]
-```
-и добавить необходимые шаги в блок
-```yaml
-jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-```
-Как только сборка отработает и в github registry появятся ваши образы, можно переходить к блоку настройки Kubernetes
-Успешным результатом данного шага является "зеленая" сборка и "зеленые" тесты
-
+> [Результат выполнения github workflows](screenshots/github-workflows.png)
 
 ### Proxy в Kubernetes
 
@@ -244,6 +183,9 @@ cat .docker/config.json | base64
 
   zookeeper-0                       1/1     Running 
 
+
+> [Результат развертывание сервисов](screenshots/3.png)
+
   8. Добавим ingress
 
   - добавьте аддон
@@ -271,9 +213,14 @@ cat .docker/config.json | base64
   Часть тестов с health-чек упадет, но создание событий отработает.
   Откройте логи event-service и сделайте скриншот обработки событий
 
+> [Скриншот обработки событий](screenshots/5.png)
+
 #### Шаг 3
 Добавьте сюда скриншота вывода при вызове https://cinemaabyss.example.com/api/movies и  скриншот вывода event-service после вызова тестов.
 
+> [Скриншот работы ендпоинта](screenshots/4.png)
+
+> [Скриншот вывода events-service после вызоыва тестов](screenshots/5.png)
 
 ## Задание 4
 Для простоты дальнейшего обновления и развертывания вам как архитектуру необходимо так же реализовать helm-чарты для прокси-сервиса и проверить работу 
@@ -349,6 +296,9 @@ minikube tunnel
 https://cinemaabyss.example.com/api/movies
 и приложите скриншот развертывания helm и вывода https://cinemaabyss.example.com/api/movies
 
+> [Скриншот развертывания helm](screenshots/6.png)
+
+> [Скришот вывода api/movies](screenshots/4.png)
 
 # Задание 5
 Компания планирует активно развиваться и для повышения надежности, безопасности, реализации сетевых паттернов типа Circuit Breaker и канареечного деплоя вам как архитектору необходимо развернуть istio и настроить circuit breaker для monolith и movies сервисов.
@@ -414,6 +364,13 @@ You can see 21 for the upstream_rq_pending_overflow value which means 21 calls s
 ```
 
 Приложите скриншот работы circuit breaker'а
+
+> [скриншот работы circuit breaker'а (1)](screenshots/9.png)
+> 
+> [скриншот работы circuit breaker'а (2)](screenshots/10.png)
+> 
+> [скриншот работы circuit breaker'а (3)](screenshots/11.png)
+
 
 Удаляем все
 ```bash
