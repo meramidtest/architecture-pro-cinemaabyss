@@ -1,0 +1,83 @@
+@startuml
+!include utils/C4_Context.puml
+!include utils/C4_Container.puml
+!include utils/C4_Component.puml
+
+!define DEVICONS https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons
+!define DEVICONS2 https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons2
+!define FONTAWESOME https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/font-awesome-5
+!define MATERIAL https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/material
+!include DEVICONS/angular.puml
+!include DEVICONS/java.puml
+!include DEVICONS/msql_server.puml
+!include DEVICONS/go.puml
+!include DEVICONS/postgresql.puml
+!include DEVICONS/android.puml
+!include DEVICONS/redis.puml
+!include DEVICONS/python.puml
+!include DEVICONS2/react_original.puml
+!include MATERIAL/router.puml
+!include MATERIAL/message.puml
+!include FONTAWESOME/users.puml
+
+LAYOUT_WITH_LEGEND()
+
+Person(user, "Пользователь", "Пользователь", $sprite="users")
+
+Person(admin, "Администратор", "Администратор", $sprite="users")
+
+Container_Boundary(b_proxy, "Прокси") {
+    Container(c_proxy, "Прокси", "Go, Gin", "", $sprite="go")
+}
+
+Container_Boundary(b_auth, "Сервис авторизации") {
+    Container(c_auth, "Сервис авторизации", "Go, Gin", "", $sprite="go")
+}
+
+Container_Boundary(b_movies, "Сервис метаданных + Kafka") {
+    Container(c_movies, "Сервис метаданных", "Go, Gin", "", $sprite="go")
+}
+
+Container_Boundary(b_streaming, "Сервис видео-стриминга") {
+    Container(c_streaming, "Сервис видео-стриминга", "Go, Gin", "", $sprite="go")
+}
+
+Container_Boundary(b_subscription, "Сервис подписок + Kafka") {
+    Container(c_subscription, "Сервис подписок", "Go, Gin", "", $sprite="go")
+    ContainerQueue(k_subscription, "Kafka", "Apache Kafka", "Шина событий сервиса")
+}
+
+System_Boundary(b_commands, "Внешняя рекомендательная система") {
+    System(s_recommendations, "Внешняя рекомендательная система")
+    ContainerQueue(queue_recommendations, "Kafka", "Apache Kafka", "Шина событий сервиса")
+}
+
+
+System(s_payment_gateway, "Платежный шлюз")
+
+System(s_external_streaming, "Онлайн-кинотеатры")
+
+Rel(user, c_proxy, "Делает запрос", $techn="HTTPS/JSON")
+Rel(admin, c_proxy, "Делает запрос", $techn="HTTPS/JSON")
+
+Rel(c_proxy, c_auth, "Проксирует", $techn="HTTPS/JSON")
+Rel(c_proxy, c_movies, "Проксирует", $techn="HTTPS/JSON")
+Rel(c_proxy, c_streaming, "Проксирует", $techn="HTTPS/JSON")
+Rel(c_proxy, c_subscription, "Проксирует", $techn="HTTPS/JSON")
+
+Rel(c_streaming, user, "Стрим видео-контента", $techn="HLS")
+
+Rel(s_recommendations, queue_recommendations, "Публикует событие новой подборки", $techn="Kafka")
+Rel(c_subscription, k_subscription, "Публикует событие отмены/создания подписки", $techn="Kafka")
+Rel(c_movies, queue_recommendations, "Публикует событие новой оценки пользователя", $techn="Kafka")
+
+Rel(s_payment_gateway, c_subscription, "Сообщает о статусе обработки платежа", $techn="HTTPS")
+Rel(c_subscription, s_payment_gateway, "Отправляет запрос", $techn="Kafka")
+
+BiRel(c_streaming, s_external_streaming, "Стрим видео-контента", $techn="HLS")
+
+Rel(queue_recommendations, c_movies, "Доставляет события", $techn="Kafka")
+Rel(c_streaming, k_subscription, "Подписывается", $techn="Kafka")
+Rel(c_movies, k_subscription, "Подписывается", $techn="Kafka")
+
+@enduml
