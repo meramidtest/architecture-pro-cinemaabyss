@@ -1,0 +1,48 @@
+@startuml
+!include utils/C4_Context.puml
+!include utils/C4_Container.puml
+!include utils/C4_Component.puml
+
+!define DEVICONS https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons
+!define FONTAWESOME https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/font-awesome-5
+!include DEVICONS/angular.puml
+!include DEVICONS/java.puml
+!include DEVICONS/msql_server.puml
+!include FONTAWESOME/users.puml
+
+LAYOUT_WITH_LEGEND()
+
+Person(clientWebSite, "Клиент", "Клиент сайта", $sprite="users")
+Person(clientInternetBank, "Клиент", "Клиент интернет-банка", $sprite="users")
+
+Person(callCenterManager, "Менеджер колл-центра", "Менеджер колл-центра", $sprite="users")
+Person(externalCallCenterManager, "Менеджер колл-центра подрядчика", "Менеджер колл-центра", $sprite="users")
+Person(depositManagerBackOffice, "Менеджер бек-офиса депозитов", "Менеджер", $sprite="users")
+
+System(website, "Сайт банка")
+System(internetBank, "Интернет-банк")
+System(callCenter, "Система кол-центра")
+System(externalCallCenter, "Система кол-центра подрядчика")
+System(abc, "АБС")
+
+System(smsGateway, "СМС-шлюз")
+
+
+Rel(clientWebSite, website, "Оставляет заявку на открытие депозита")
+Rel(website, abc, "Создает заявку в АБС")
+
+BiRel(abc, callCenter, "Передает данные о новой заявке в call-center, обновляет их в ABC")
+BiRel(abc, externalCallCenter, "Передает данные о новой заявке в call-center, обновляет их в ABC")
+
+Rel(callCenterManager, callCenter, "Запрашивает заявку для обработки")
+Rel(externalCallCenterManager, externalCallCenter, "Запрашивает заявку для обработки")
+
+Rel(clientInternetBank, internetBank, "Оставляет заявку на открытие депозита")
+Rel(internetBank, smsGateway, "Оставляет смс-подтверждения")
+Rel(internetBank, abc, "Создает заявку на открытие депозита в АБС")
+
+Rel(depositManagerBackOffice, abc, "Утверждает заявки на открытие депозита")
+
+Rel(abc, smsGateway, "Отправляет оповещение об обновлении статуса")
+
+@enduml

@@ -1,0 +1,37 @@
+@startuml
+!include utils/C4_Context.puml
+!include utils/C4_Container.puml
+!include utils/C4_Component.puml
+
+!define DEVICONS https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons
+!define FONTAWESOME https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/font-awesome-5
+!include FONTAWESOME/users.puml
+
+LAYOUT_WITH_LEGEND()
+
+Person(clientWebSite, "Клиент", "Клиент сайта", $sprite="users")
+Person(clientInternetBank, "Клиент", "Клиент интернет-банка", $sprite="users")
+Person(frontOfficeManager, "Менеджер фронт-офиса", "Менеджер фронт-офиса", $sprite="users")
+
+System(website, "Сайт банка")
+System(internetBank, "Интернет-банк")
+System(creditBackend, "Кредитный бэкенд")
+System(abc, "АБС")
+System(smsGateway, "СМС-шлюз")
+System(creditConveyor, "Кредитный конвейер")
+System(scoringSystem, "Система скоринга")
+
+Rel(clientWebSite, website, "Оставляет заявку на кредит")
+Rel(website, creditBackend, "Создает/просматривает заявки и условия")
+
+Rel(clientInternetBank, internetBank, "Работает с кредитами")
+Rel(internetBank, creditBackend, "Создает/просматривает заявки, подтверждает OTP")
+
+Rel(frontOfficeManager, abc, "Оформляет/продолжает заявки в отделении")
+
+Rel(creditBackend, abc, "Обработка заявок и статусов")
+Rel(creditBackend, smsGateway, "OTP и уведомления")
+Rel(creditBackend, creditConveyor, "Получает условия кредитов")
+Rel(creditBackend, scoringSystem, "Запрашивает скоринг/получает результаты")
+
+@enduml

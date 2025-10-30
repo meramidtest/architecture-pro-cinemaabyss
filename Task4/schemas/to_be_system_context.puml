@@ -1,0 +1,43 @@
+@startuml
+!include utils/C4_Context.puml
+!include utils/C4_Container.puml
+!include utils/C4_Component.puml
+
+!define DEVICONS https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons
+!define FONTAWESOME https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/font-awesome-5
+!include DEVICONS/angular.puml
+!include DEVICONS/java.puml
+!include DEVICONS/msql_server.puml
+!include FONTAWESOME/users.puml
+
+LAYOUT_WITH_LEGEND()
+
+Person(client, "Клиент", "Клиент", $sprite="users")
+
+Person(callCenterManager, "Менеджер колл-центра", "Менеджер колл-центра", $sprite="users")
+Person(externalCallCenterManager, "Менеджер колл-центра подрядчика", "Менеджер колл-центра", $sprite="users")
+Person(depositManagerBackOffice, "Менеджер бек-офиса депозитов", "Менеджер", $sprite="users")
+
+System(website, "Сайт банка")
+System(callCenter, "Система кол-центра")
+System(externalCallCenter, "Система кол-центра подрядчика")
+System(abc, "АБС")
+System(telecomOperator, "Телефонный оператор")
+
+Rel(client, telecomOperator, "Совершает звонок")
+Rel(telecomOperator, callCenter, "Соединяет с колл-центром")
+
+Rel(callCenter, telecomOperator, "Переадресовывает звонок")
+Rel(telecomOperator, externalCallCenter, "Соединяет с внешним колл-центром")
+
+Rel(website, abc, "Получает депозиты")
+
+Rel(callCenter, callCenterManager, "Получает звонок от клиента")
+Rel(externalCallCenter, externalCallCenterManager, "Получает звонок от клиента")
+
+Rel(depositManagerBackOffice, abc, "Передает информацию о ставках")
+
+Rel(callCenterManager, website, "Просматривает информацию о ставках")
+Rel(externalCallCenterManager, website, "Просматривает информацию о ставках")
+
+@enduml

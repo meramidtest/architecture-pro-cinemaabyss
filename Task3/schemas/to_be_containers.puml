@@ -1,0 +1,122 @@
+@startuml
+!include utils/C4_Context.puml
+!include utils/C4_Container.puml
+!include utils/C4_Component.puml
+
+!define DEVICONS https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons
+!define DEVICONS2 https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons2
+!define FONTAWESOME https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/font-awesome-5
+!define MATERIAL https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/material
+!include DEVICONS/angular.puml
+!include DEVICONS/java.puml
+!include DEVICONS/msql_server.puml
+!include DEVICONS/go.puml
+!include DEVICONS/postgresql.puml
+!include DEVICONS/android.puml
+!include DEVICONS/redis.puml
+!include DEVICONS/python.puml
+!include DEVICONS/php.puml
+!include DEVICONS/dotnet.puml
+!include DEVICONS/windows.puml
+!include DEVICONS/database.puml
+!include DEVICONS2/react_original.puml
+!include MATERIAL/router.puml
+!include MATERIAL/message.puml
+!include FONTAWESOME/users.puml
+
+LAYOUT_WITH_LEGEND()
+
+' Skeleton container diagram based on system context
+' Add containers inside each boundary as needed
+
+Person(clientWebSite, "Клиент", "Клиент сайта", $sprite="users")
+Person(clientInternetBank, "Клиент", "Клиент интернет-банка", $sprite="users")
+
+Person(callCenterManager, "Менеджер колл-центра", "Менеджер колл-центра", $sprite="users")
+'Person(externalCallCenterManager, "Менеджер колл-центра подрядчика", "Менеджер колл-центра", $sprite="users")
+Person(depositManagerBackOffice, "Менеджер бек-офиса депозитов", "Менеджер", $sprite="users")
+
+System_Boundary(b_website, "Сайт банка") {
+    Container(spa_site, "SPA приложение", "React", "React приложение", $sprite="react_original")
+    Container(back_site, "Бекенд", "PHP", "", $sprite="php")
+    BiRel(spa_site, back_site, "Обмениваются данными")
+    SystemQueue(newClientRequestsQueue, "Очередь заявок новых клиентов", "Kafka")
+}
+
+System_Boundary(b_internetBank, "Интернет-банк") {
+    Container(internetBank, "Интернет-банк", "ASP.NET MVC 4.5", "", $sprite="dotnet")
+    ContainerDb(dbIbank, "БД", "PostgreSQL", "", $sprite="postgresql")
+    BiRel(internetBank, dbIbank, "Читает/записывает данные", $techn="SQL")
+    SystemQueue(clientRequestsQueue, "Очередь заявок существующих клиентов", "Kafka")
+}
+
+System_Boundary(b_callCenter, "Система кол-центра") {
+    Container(callCenterFe, "SPA приложение", "React", "React приложение", $sprite="react_original")
+    Container(callCenterBe, "Бэкенд", "Java Spring Boot", "", $sprite="java")
+    Container(callCenterWorker, "Воркер", "Java Spring Boot", "Обрабатывает события и создает заявки", $sprite="java")
+    ContainerDb(callCenterDb, "БД", "PostgreSQL", "", $sprite="postgresql")
+
+    BiRel(callCenterFe, callCenterBe, "Читает/записывает данные", $techn="")
+    BiRel(callCenterBe, callCenterDb, "Читает/записывает данные", $techn="SQL")
+    Rel(callCenterWorker, callCenterDb, "Записывает данные", $techn="SQL")
+
+    SystemQueue(handledClientRequestsQueue, "Очередь обработанных заявок call центром", "Kafka")
+
+    Rel(callCenterBe, handledClientRequestsQueue, "Передает обработанные заявки", $techn="Kafka producer")
+}
+
+'System_Boundary(b_externalCallCenter, "Система кол-центра подрядчика") {
+'    ' TODO: add containers for "Система кол-центра подрядчика"
+'}
+
+System_Boundary(b_abc, "АБС") {
+    Container(abcFE, "Клиент", "Delphi", "", $sprite="windows")
+    Container(abcWorker, "Воркер заявок", ".NET", "Обрабатывает события и создает заявки", $sprite="dotnet")
+
+    Container(abcBe, "Бекенд", ".NET", "Проксирует информацию по ставкам, кеширует", $sprite="dotnet")
+
+    ContainerDb(abcDB, "БД", "Oracle", "", $sprite="database")
+    BiRel(abcFE, abcDB, "Читает/записывает данные", $techn="SQL")
+    Rel(abcWorker, abcDB, "Создает заявки", $techn="SQL")
+
+    BiRel(abcDB, abcBe, "Запрашивает ставки, получает уведомление о их изменении", $techn="HTTP")
+}
+
+System_Boundary(b_smsGateway, "СМС-шлюз") {
+    Container(smsGateway, "SMS-шлюз", "", "", $sprite="message")
+}
+
+System(smsOperator, "Система телеком оператора")
+
+Rel(clientWebSite, spa_site, "Клиент пользуется сайтом")
+Rel(callCenterManager, callCenterFe, "Работает в системе, заводит заявки")
+Rel(depositManagerBackOffice, abcFE, "Работает в АБС")
+
+Rel(clientInternetBank, internetBank, "Клиент пользуется интернет банком")
+
+
+Rel(abcDB, smsGateway, "Отправляет СМС-уведомления", $techn="HTTP")
+Rel(internetBank, smsGateway, "Отправляет СМС-уведомления", $techn="HTTP")
+
+
+Rel(smsGateway, smsOperator, "Передает СМС-сообщения")
+
+Rel(back_site, newClientRequestsQueue, "Публикует события о создании заявок", $techn="Kafka producer")
+Rel(abcWorker, newClientRequestsQueue, "Подписывается на события о новых заявках", $techn="Kafka consumer,  rate-limited poll")
+Rel(abcWorker, handledClientRequestsQueue, "Подписывается на события", $techn="Kafka consumer")
+
+
+Rel(back_site, abcBe, "Запрашивает актуальные ставки", $techn="HTTP")
+
+Rel(internetBank, abcBe, "Запрашивает актуальные ставки", $techn="HTTP")
+
+Rel(callCenterBe, abcBe, "Запрашивает актуальные ставки", $techn="HTTP")
+
+Rel(internetBank, clientRequestsQueue, "Публикует события о создании заявок", $techn="Kafka producer")
+Rel(abcWorker, clientRequestsQueue, "Подписывается на события о новых заявках", $techn="Kafka consumer,  rate-limited poll")
+
+Rel(callCenterWorker, newClientRequestsQueue, "Подписывается на события о новых заявках", $techn="Kafka consumer,  rate-limited poll")
+
+@enduml
+
+

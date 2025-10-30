@@ -1,0 +1,100 @@
+@startuml
+!include utils/C4_Context.puml
+!include utils/C4_Container.puml
+!include utils/C4_Component.puml
+
+!define DEVICONS https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons
+!define DEVICONS2 https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons2
+!define FONTAWESOME https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/font-awesome-5
+!define MATERIAL https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/material
+!include DEVICONS/angular.puml
+!include DEVICONS/java.puml
+!include DEVICONS/php.puml
+!include DEVICONS/dotnet.puml
+!include DEVICONS/postgresql.puml
+!include DEVICONS/windows.puml
+!include DEVICONS/database.puml
+!include DEVICONS/redis.puml
+!include MATERIAL/message.puml
+!include FONTAWESOME/users.puml
+
+LAYOUT_WITH_LEGEND()
+
+Person(clientWebSite, "Клиент", "Клиент сайта", $sprite="users")
+Person(clientInternetBank, "Клиент", "Клиент интернет-банка", $sprite="users")
+Person(frontOfficeManager, "Менеджер фронт-офиса", "Менеджер фронт-офиса", $sprite="users")
+
+System_Boundary(b_website, "Сайт банка") {
+    Container(spa_site, "SPA приложение", "Angular/React", "Витрина кредитов и заявка")
+    Container(back_site, "Бэкенд сайта", "PHP", "Формы заявок, проксирование к кредитному бэкенду")
+    Rel(spa_site, back_site, "Читает/пишет", "HTTP")
+}
+
+System_Boundary(b_internetBank, "Интернет-банк") {
+    Container(internetBank, "Интернет-банк", ".NET", "Кредиты: список, пред-одобрение, заявки, OTP", $sprite="dotnet")
+    ContainerDb(dbIbank, "БД ИБ", "PostgreSQL", "Профили/сессии/минимальные данные", $sprite="postgresql")
+    BiRel(internetBank, dbIbank, "Читает/записывает", $techn="SQL")
+}
+
+System_Boundary(b_credit, "Кредитный контур") {
+    Container(creditBackend, "Кредитный бэкенд", ".NET", "API для каналов; валидация; OTP; кэш условий; публикация событий", $sprite="dotnet")
+    Container(scoringWorker, "Скоринг-воркер", ".NET", "Асинхронные решения/перескоринг; публикация статусов; off-hours политика", $sprite="dotnet")
+    SystemQueue(qCreditApplications, "credit-applications", "Kafka")
+    SystemQueue(qScoringRequests, "scoring-requests", "Kafka")
+    SystemQueue(qCreditStatusUpdates, "credit-status-updates", "Kafka")
+}
+
+System_Boundary(b_abc, "АБС") {
+    Container(abcFE, "Клиент", "Delphi", "", $sprite="windows")
+    Container(abcWorker, "Воркер заявок", ".NET", "Обрабатывает события и создает заявки", $sprite="dotnet")
+
+    Container(abcBe, "Бекенд", ".NET", "Проксирует информацию по ставкам, кеширует", $sprite="dotnet")
+
+    ContainerDb(abcDB, "БД", "Oracle", "", $sprite="database")
+    BiRel(abcFE, abcDB, "Читает/записывает данные", $techn="SQL")
+    Rel(abcWorker, abcDB, "Создает заявки", $techn="SQL")
+
+    BiRel(abcDB, abcBe, "Запрашивает ставки, получает уведомление о их изменении", $techn="HTTP")
+}
+
+System_Boundary(b_smsGateway, "СМС-шлюз") {
+    Container(smsGateway, "SMS-шлюз", "", "OTP и уведомления", $sprite="message")
+}
+
+System_Boundary(b_creditConveyor, "Кредитный конвейер") {
+    Container(creditConveyor, "Кредитный конвейер", "", "Источник условий кредитов")
+}
+
+System_Boundary(b_scoring, "Система скоринга") {
+    Container(scoringSystem, "Система скоринга", "", "Расчет скоринговых решений")
+}
+
+' Пользователи и каналы
+Rel(clientWebSite, spa_site, "Подает заявку")
+Rel(clientInternetBank, internetBank, "Работает с кредитами")
+Rel(frontOfficeManager, abcFE, "Оформляет/продолжает заявки")
+
+' Каналы -> Кредитный контур
+Rel(back_site, creditBackend, "Создает заявки, список условий", $techn="HTTP")
+Rel(internetBank, creditBackend, "Заявки, пред-одобрение, OTP", $techn="HTTP")
+
+' Интеграции Кредитного контура
+Rel(creditBackend, smsGateway, "OTP и уведомления", $techn="HTTP")
+Rel(creditBackend, creditConveyor, "Получает условия", $techn="HTTP")
+Rel(creditBackend, abcBe, "Запрашивает актуальные ставки", $techn="HTTP")
+
+' Очереди и асинхронные потоки
+Rel(creditBackend, qCreditApplications, "Публикует новые/обновленные заявки", $techn="Kafka producer")
+Rel(abcWorker, qCreditApplications, "Подписывается на заявки", $techn="Kafka consumer")
+
+Rel(creditBackend, qScoringRequests, "Публикует запросы на (пере)скоринг", $techn="Kafka producer")
+Rel(scoringWorker, qScoringRequests, "Подписывается на запросы", $techn="Kafka consumer")
+Rel(scoringWorker, scoringSystem, "Запрашивает скоринг", $techn="HTTP")
+
+Rel(scoringWorker, qCreditStatusUpdates, "Публикует статусы", $techn="Kafka producer")
+Rel(abcWorker, qCreditStatusUpdates, "Публикует статусы", $techn="Kafka producer")
+Rel(creditBackend, qCreditStatusUpdates, "Подписывается на статусы", $techn="Kafka consumer")
+
+Rel(abcDB, smsGateway, "Отправляет СМС-уведомления", $techn="HTTP")
+
+@enduml

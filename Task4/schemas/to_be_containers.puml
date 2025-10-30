@@ -1,0 +1,85 @@
+@startuml
+!include utils/C4_Context.puml
+!include utils/C4_Container.puml
+!include utils/C4_Component.puml
+
+!define DEVICONS https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons
+!define DEVICONS2 https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons2
+!define FONTAWESOME https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/font-awesome-5
+!define MATERIAL https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/material
+!include DEVICONS/angular.puml
+!include DEVICONS/java.puml
+!include DEVICONS/msql_server.puml
+!include DEVICONS/go.puml
+!include DEVICONS/postgresql.puml
+!include DEVICONS/android.puml
+!include DEVICONS/redis.puml
+!include DEVICONS/python.puml
+!include DEVICONS/php.puml
+!include DEVICONS/dotnet.puml
+!include DEVICONS/windows.puml
+!include DEVICONS/database.puml
+!include DEVICONS2/react_original.puml
+!include MATERIAL/router.puml
+!include MATERIAL/message.puml
+!include FONTAWESOME/users.puml
+
+LAYOUT_WITH_LEGEND()
+
+' Skeleton container diagram aligned with system context
+' Only show actors/systems and relations from the context
+
+Person(client, "Клиент", "Клиент", $sprite="users")
+
+Person(callCenterManager, "Менеджер колл-центра", "Менеджер колл-центра", $sprite="users")
+Person(externalCallCenterManager, "Менеджер колл-центра подрядчика", "Менеджер колл-центра", $sprite="users")
+Person(depositManagerBackOffice, "Менеджер бек-офиса депозитов", "Менеджер", $sprite="users")
+
+System_Boundary(b_website, "Сайт банка") {
+    Container(spa_site, "SPA приложение", "React", "React приложение", $sprite="react_original")
+    Container(back_site, "Бекенд", "PHP", "", $sprite="php")
+    Rel(spa_site, back_site, "Получает информацию о ставках")
+}
+
+System_Boundary(b_callCenter, "Система кол-центра") {
+    Container(callCenterBe, "Бэкенд", "Java Spring Boot", "", $sprite="java")
+}
+
+System_Boundary(b_externalCallCenter, "Система кол-центра подрядчика") {
+    Container(externalCallCenterBe, "Бэкенд", "Java Spring Boot", "", $sprite="java")
+}
+
+System_Boundary(b_abc, "АБС") {
+    Container(abcUi, "UI бек-офиса", "Angular", "Интерфейс для менеджеров депозитов", $sprite="angular")
+    Container(abcBe, "Бекенд", ".NET", "Проксирует информацию по ставкам и управляет депозитами", $sprite="dotnet")
+    ContainerDb(abcDb, "База данных депозитов", "PostgreSQL", "Хранит продукты, ставки и заявки", $sprite="postgresql")
+    Container(abcCache, "Кэш", "Redis", "Кэширование ставок и справочников", $sprite="redis")
+    Container(abcBus, "Сообщения", "Message Broker", "Публикация/подписка событий (изменение ставок)", $sprite="message")
+    Rel(abcUi, abcBe, "Работает с API")
+    Rel(abcBe, abcDb, "Читает/пишет данные", "SQL")
+    Rel(abcBe, abcCache, "Кэширует данные", "Redis")
+    Rel(abcBe, abcBus, "Публикует события")
+}
+
+System(telecomOperator, "Телефонный оператор")
+
+Rel(client, telecomOperator, "Совершает звонок")
+Rel(telecomOperator, callCenterBe, "Соединяет с колл-центром")
+
+Rel(callCenterBe, telecomOperator, "Переадресовывает звонок")
+Rel(telecomOperator, externalCallCenterBe, "Соединяет с внешним колл-центром")
+
+Rel(back_site, abcBe, "Получает депозиты")
+
+Rel(callCenterBe, callCenterManager, "Получает звонок от клиента")
+Rel(externalCallCenterBe, externalCallCenterManager, "Получает звонок от клиента")
+
+Rel(depositManagerBackOffice, abcBe, "Передает информацию о ставках")
+Rel(depositManagerBackOffice, abcUi, "Работает в интерфейсе бек-офиса")
+
+Rel(callCenterManager, spa_site, "Просматривает информацию о ставках")
+Rel(externalCallCenterManager, spa_site, "Просматривает информацию о ставках")
+
+@enduml
+
+
